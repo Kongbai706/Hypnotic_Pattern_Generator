@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hypnotic Pattern Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        h1 {
+            color: #fff;
+            font-size: 28px;
+            text-align: center;
+        }
+        
+        canvas {
+            border: 3px solid #444;
+            border-radius: 8px;
+            cursor: crosshair;
+            background-color: #0a0a0a;
+            display: block;
+        }
+        
+        .controls {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 8px;
+            color: #ccc;
+            max-width: 900px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: inline-block;
+            margin-right: 15px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .control-group select,
+        .control-group input {
+            padding: 8px 12px;
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .control-group input[type="range"] {
+            width: 200px;
+            cursor: pointer;
+        }
+        
+        .control-group input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button.danger {
+            background-color: #f44336;
+        }
+        
+        button.danger:hover {
+            background-color: #da190b;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .hud {
+            background-color: #333;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            min-width: 300px;
+            max-width: 900px;
+        }
+        
+        .hud-item {
+            margin: 5px 0;
+        }
+        
+        .info {
+            background-color: #0a2a0a;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #0f0;
+            max-width: 900px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Hypnotic Pattern Generator</h1>
+        
+        <canvas id="canvas" width="900" height="900"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>对称模式 (Symmetry Mode):</label>
+                <select id="symmetryMode">
+                    <option value="rotational">旋转对称 (Rotational)</option>
+                    <option value="reflection">镜像对称 (Reflection)</option>
+                    <option value="spiral">螺旋对称 (Spiral)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>对称折数 (Fold Count):</label>
+                <input type="range" id="foldCount" min="2" max="16" value="6">
+                <span id="foldDisplay">6</span>
+            </div>
+            
+            <div class="control-group">
+                <label>色调偏移 (Hue Offset):</label>
+                <input type="range" id="hueOffset" min="0" max="360" value="0">
+                <span id="hueDisplay">0°</span>
+            </div>
+            
+            <div class="control-group">
+                <label>笔画宽度 (Line Width):</label>
+                <input type="range" id="lineWidth" min="1" max="10" value="2">
+                <span id="lineWidthDisplay">2</span>
+            </div>
+            
+            <div class="button-group">
+                <button onclick="clearCanvas()">清空画布 (Clear)</button>
+                <button onclick="downloadPattern()">保存图案 (Save)</button>
+                <button onclick="randomHue()" class="info">随机色调 (Random Hue)</button>
+            </div>
+        </div>
+        
+        <div class="hud">
+            <div class="hud-item">📍 鼠标位置: <span id="mouseX">0</span>, <span id="mouseY">0</span></div>
+            <div class="hud-item">⚡ 鼠标速度: <span id="mouseSpeed">0</span> px/s</div>
+            <div class="hud-item">🔄 当前模式: <span id="currentMode">旋转对称 (Rotational)</span></div>
+            <div class="hud-item">✨ 折数: <span id="currentFold">6</span></div>
+            <div class="hud-item">🎨 色调: <span id="currentHue">0°</span></div>
+        </div>
+        
+        <div class="info">
+            <strong>使用说明 (Instructions):</strong><br>
+            • 拖动鼠标左键绘制对称图案 (Drag mouse to draw)<br>
+            • 改变对称模式和折数以创建不同的图案 (Change symmetry mode and fold count)<br>
+            • 调整色调和笔画宽度来改变视觉效果 (Adjust hue and line width)<br>
+            • 鼠标移动速度影响颜色强度 (Mouse speed affects color intensity)<br>
+            • 点击"保存图案"下载你的创意作品 (Click Save to download)<br>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const WIDTH = 900;
+        const HEIGHT = 900;
+        const CENTER = { x: WIDTH / 2, y: HEIGHT / 2 };
+
+        let isDrawing = false;
+        let lastPos = null;
+        let mouseSpeed = 0;
+
+        // Initialize canvas
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // Event listeners
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            lastPos = getMousePos(e);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const pos = getMousePos(e);
+            updateHUD(pos);
+            
+            if (isDrawing && lastPos) {
+                const dx = pos.x - lastPos.x;
+                const dy = pos.y - lastPos.y;
+                mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+                
+                drawWithSymmetry(lastPos, pos);
+                lastPos = pos;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+            lastPos = null;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+            lastPos = null;
+        });
+
+        // Update controls
+        document.getElementById('foldCount').addEventListener('input', (e) => {
+            document.getElementById('foldDisplay').textContent = e.target.value;
+            document.getElementById('currentFold').textContent = e.target.value;
+        });
+
+        document.getElementById('hueOffset').addEventListener('input', (e) => {
+            document.getElementById('hueDisplay').textContent = e.target.value + '°';
+            document.getElementById('currentHue').textContent = e.target.value + '°';
+        });
+
+        document.getElementById('lineWidth').addEventListener('input', (e) => {
+            document.getElementById('lineWidthDisplay').textContent = e.target.value;
+        });
+
+        document.getElementById('symmetryMode').addEventListener('change', (e) => {
+            const modeNames = {
+                'rotational': '旋转对称 (Rotational)',
+                'reflection': '镜像对称 (Reflection)',
+                'spiral': '螺旋对称 (Spiral)'
+            };
+            document.getElementById('currentMode').textContent = modeNames[e.target.value];
+        });
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function getSymmetryPoints(x, y, mode, nFold) {
+            const points = [];
+            const dx = x - CENTER.x;
+            const dy = y - CENTER.y;
+            const r = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx);
+
+            if (mode === 'rotational') {
+                for (let i = 0; i < nFold; i++) {
+                    const a = angle + (2 * Math.PI * i) / nFold;
+                    const px = CENTER.x + r * Math.cos(a);
+                    const py = CENTER.y + r * Math.sin(a);
+                    points.push({ x: px, y: py });
+                }
+            } else if (mode === 'reflection') {
+                for (let ax = 0; ax < nFold; ax++) {
+                    const axisAngle = (Math.PI * ax) / nFold;
+                    const c = Math.cos(2 * axisAngle);
+                    const s = Math.sin(2 * axisAngle);
+                    const rx = c * dx + s * dy;
+                    const ry = s * dx - c * dy;
+                    points.push({ x: CENTER.x + rx, y: CENTER.y + ry });
+                }
+            } else if (mode === 'spiral') {
+                const spiralParam = 0.05;
+                const newR = r * (1 + spiralParam);
+                points.push({
+                    x: CENTER.x + newR * Math.cos(angle),
+                    y: CENTER.y + newR * Math.sin(angle)
+                });
+            }
+
+            return points;
+        }
+
+        function drawWithSymmetry(p1, p2) {
+            const mode = document.getElementById('symmetryMode').value;
+            const nFold = parseInt(document.getElementById('foldCount').value);
+            const hue = parseInt(document.getElementById('hueOffset').value);
+            const lineWidth = parseInt(document.getElementById('lineWidth').value);
+
+            const p1Points = getSymmetryPoints(p1.x, p1.y, mode, nFold);
+            const p2Points = getSymmetryPoints(p2.x, p2.y, mode, nFold);
+
+            // Color based on speed and hue
+            const hueRad = (hue * Math.PI) / 180;
+            const r = Math.floor(128 + 127 * Math.sin(hueRad + mouseSpeed * 0.1));
+            const g = Math.floor(128 + 127 * Math.sin(hueRad + mouseSpeed * 0.1 + 2.0));
+            const b = Math.floor(128 + 127 * Math.sin(hueRad + mouseSpeed * 0.1 + 4.0));
+            const color = `rgb(${r}, ${g}, ${b})`;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            for (let i = 0; i < p1Points.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(p1Points[i].x, p1Points[i].y);
+                ctx.lineTo(p2Points[i].x, p2Points[i].y);
+                ctx.stroke();
+            }
+        }
+
+        function updateHUD(pos) {
+            document.getElementById('mouseX').textContent = Math.round(pos.x);
+            document.getElementById('mouseY').textContent = Math.round(pos.y);
+            document.getElementById('mouseSpeed').textContent = mouseSpeed.toFixed(1);
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        }
+
+        function randomHue() {
+            const randomValue = Math.floor(Math.random() * 360);
+            document.getElementById('hueOffset').value = randomValue;
+            document.getElementById('hueDisplay').textContent = randomValue + '°';
+            document.getElementById('currentHue').textContent = randomValue + '°';
+        }
+
+        function downloadPattern() {
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `pattern_${new Date().getTime()}.png`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
